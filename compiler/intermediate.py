@@ -355,6 +355,7 @@ class SetElem(Stmt):
             % (str(self.array), str(self.index.reduce()), str(self.expr.reduce()))
         )
 
+
 class Seq(Stmt):
     def __init__(self, s1: Stmt, s2: Stmt) -> None:
         super().__init__()
@@ -371,6 +372,7 @@ class Seq(Stmt):
             self.stmt1.gen(b, label)
             self.emit_label(label)
             self.stmt2.gen(label, a)
+
 
 class Break(Stmt):
     def __init__(self, enclosing: Stmt) -> None:
