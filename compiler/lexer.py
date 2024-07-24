@@ -9,15 +9,21 @@ from io import TextIOWrapper
 
 class Lexer:
     line: int = 1
+
+    f: TextIOWrapper
     words: dict[str, Word]
+    peak: str
+    line_buffer: str
 
     def _reserve(self, w: Word) -> None:
         self.words.update({w.lexeme: w})
 
     def __init__(self, f: TextIOWrapper) -> None:
-        self.words = {}
+        Lexer.line = 1
         self.f = f
+        self.words = {}
         self.peek = " "
+        self.line_buffer = ""
         self._reserve(Word("if", Tag.IF))
         self._reserve(Word("else", Tag.ELSE))
         self._reserve(Word("while", Tag.WHILE))
@@ -28,6 +34,8 @@ class Lexer:
 
     def _read_char(self) -> None:
         self.peek = self.f.read(1)
+        if self.peek != "\n":
+            self.line_buffer += self.peek
 
     def _read_comp_char(self, c: str) -> bool:
         self._read_char()
@@ -43,6 +51,7 @@ class Lexer:
                 self._read_char()
             elif self.peek == "\n":
                 Lexer.line += 1
+                self.line_buffer = ""
                 self._read_char()
             else:
                 break

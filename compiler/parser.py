@@ -2,7 +2,9 @@ from compiler.lexer import Lexer
 from compiler.tokens import *
 from compiler.symbols import *
 from compiler.intermediate import *
+from compiler.error import ParseError, GrammarError
 from typing import cast
+
 
 class Parser:
     used: int
@@ -19,7 +21,10 @@ class Parser:
         self.move()
 
     def parseError(self, s: str) -> None:
-        raise RuntimeError("Near line %d:\n  %s" % (self.lex.line, s))
+        raise ParseError(
+            "Near line %d:\n%s\n%s\n  %s"
+            % (self.lex.line, self.lex.line_buffer, "~" * len(self.lex.line_buffer), s)
+        )
 
     def move(self) -> None:
         self.look = self.lex.scan()
@@ -29,7 +34,7 @@ class Parser:
         if self.look.tag == _tag:
             self.move()
         else:
-            self.error("Unexpected token '%s'" % str(self.look))
+            self.error("Unexpected token '%s'." % str(self.look))
 
     def save_to_env(self, w: Token, i: Id) -> None:
         self.envs[-1][w] = i
@@ -41,12 +46,15 @@ class Parser:
         return None
 
     def program(self) -> None:
-        s: Stmt = self.block()
-        begin: int = s.new_label()
-        after: int = s.new_label()
-        s.emit_label(begin)
-        s.gen(begin, after)
-        s.emit_label(after)
+        try:
+            s: Stmt = self.block()
+            begin: int = s.new_label()
+            after: int = s.new_label()
+            s.emit_label(begin)
+            s.gen(begin, after)
+            s.emit_label(after)
+        except GrammarError as err:
+            self.parseError(err.args[0])
 
     def block(self) -> Stmt:
         self.match("{")
@@ -248,7 +256,7 @@ class Parser:
             else:
                 return self.offset(id)
         else:
-            self.parseError("Syntax error")
+            self.parseError("Syntax error: Missing factor, or wrong factor type.")
 
     def offset(self, id: Id) -> Access:
         id_type: Type = id.type
@@ -266,7 +274,9 @@ class Parser:
             index_expr = self.bool_expr()
             self.match("]")
             if not isinstance(inner_type, Array):
-                self.parseError("'%s' is not an array, or dimensions mismatch." % str(id))
+                self.parseError(
+                    "'%s' is not an array, or dimensions mismatch." % str(id)
+                )
             inner_type = cast(Array, inner_type).of
             w = Constant.c_number(inner_type.width)
             t1 = Arith(Token.char("*"), index_expr, w)

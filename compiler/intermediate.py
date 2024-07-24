@@ -1,6 +1,7 @@
 from compiler.lexer import Lexer
 from compiler.tokens import *
 from compiler.symbols import *
+from compiler.error import GrammarError
 
 
 class Node:
@@ -9,7 +10,7 @@ class Node:
     labels: int = 0
 
     def __init__(self):
-        self.lexline = Lexer.line
+        pass
 
     @staticmethod
     def new_label() -> int:
@@ -17,7 +18,7 @@ class Node:
         return Node.labels
 
     def error(self, s) -> None:
-        raise RuntimeError("Near line %d: %s" % (self.lexline, s))
+        raise GrammarError(s)
 
     def emit_label(seif, i: int) -> None:
         print("L%d:" % i, end="")
@@ -321,7 +322,10 @@ class Set(Stmt):
     def __init__(self, i: Id, x: Expr) -> None:
         super().__init__()
         if self.check(i.type, x.type) is None:
-            self.error("Type error: variable doesn't match expression.")
+            if isinstance(i.type, Array) or isinstance(x.type, Array):
+                self.error("Type error: array dimensions don't match.")
+            else:
+                self.error("Type error: variable doesn't match expression.")
         self.id = i
         self.expr = x
 
@@ -344,7 +348,10 @@ class SetElem(Stmt):
     def __init__(self, x: Access, y: Expr) -> None:
         super().__init__()
         if self.check(x.type, y.type) is None:
-            self.error("Type error: variable doesn't match expression.")
+            if isinstance(x.type, Array) or isinstance(x.type, Array):
+                self.error("Type error: array dimensions don't match.")
+            else:
+                self.error("Type error: variable doesn't match expression.")
         self.array = x.array
         self.index = x.index
         self.expr = y
